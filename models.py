@@ -1,6 +1,5 @@
 #models.py
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
 
 db = SQLAlchemy()
 
@@ -14,17 +13,12 @@ class AdcData(db.Model):
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
     location = db.Column(db.String(120))
+    waveform_file = db.Column(db.String(120))  
 
-class AdcValues(db.Model):
+'''class AdcValues(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     event_id = db.Column(db.Integer, db.ForeignKey('adc_data.id'))
     channel = db.Column(db.Integer)
     component = db.Column(db.String(10))
-    value = db.Column(db.Float)
+    value = db.Column(db.Float)'''
 
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    username = db.Column(db.String(120), unique=True)
-    email = db.Column(db.String(120), unique=True)
-    password = db.Column(db.String(120))
-    role = db.Column(db.String(100))

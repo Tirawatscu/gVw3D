@@ -1,4 +1,4 @@
-from mainwebbase import db, create_app
+from gVw001 import db, create_app
 
 app = create_app()
 

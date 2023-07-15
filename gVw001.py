@@ -10,16 +10,17 @@ import json
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta
-#from flask_socketio import SocketIO, emit
 from flask import copy_current_request_context
-#from flask_socketio import Namespace, emit
 from collections import defaultdict
 import socket
 from threading import Thread, Lock
-from models import db, AdcData, AdcValues
+from models import db, AdcData
 from flask_sqlalchemy import SQLAlchemy
-from auth import auth_bp
-from flask_login import LoginManager, current_user, login_required
+# Additional import needed for this setup
+from werkzeug.utils import secure_filename
+import os
+
+Storage_path = 'Storages'
 
 
 def create_app():
@@ -27,13 +28,7 @@ def create_app():
     app.config['SECRET_KEY'] = 'gvWave01'
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gVdb2023.db'
     #app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://admin:Geoverse5@161.200.87.11:80/gvdb'
-
-    
-    app.register_blueprint(auth_bp)
     db.init_app(app)
-    login_manager = LoginManager()
-    login_manager.login_view = 'auth_bp.login'
-    login_manager.init_app(app)
     '''from models import User
     @login_manager.user_loader
     def load_user(user_id):
@@ -49,26 +44,22 @@ sleep_duration = 1 / sampling_rate
 
 @app.route('/')
 def index():
-    return render_template('login.html')
+    return render_template('dashboard.html')
 
 @app.route('/dashboard.html')
-@login_required
 def dashboard():
     return render_template('dashboard.html')
 
 
 @app.route('/icons.html')
-@login_required
 def icons():
     return render_template('icons.html')
 
 @app.route('/typography.html')
-@login_required
 def typography():
     return render_template('typography.html')
 
 @app.route('/map.html')
-@login_required
 def map():
     # Fetch data from the database
     data = AdcData.query.with_entities(AdcData.id, AdcData.timestamp, AdcData.num_channels, AdcData.duration, AdcData.radius, AdcData.latitude, AdcData.longitude).all()
@@ -84,7 +75,7 @@ def user():
 def rtl():
     return render_template('rtl.html')
 
-@app.route('/collect_data', methods=['POST'])
+'''@app.route('/collect_data', methods=['POST'])
 def collect_data():
     duration = float(request.form['duration'])
     radius = float(request.form['radius'])
@@ -93,61 +84,15 @@ def collect_data():
     location = request.form['location']
     ADC_Value_List, sampling_rate = collect_adc_data(duration, radius, latitude, longitude, location)
     graphJSON = create_plot(ADC_Value_List)
-    return jsonify({'graphJSON': json.loads(graphJSON), 'sampling_rate': sampling_rate})
+    return jsonify({'graphJSON': json.loads(graphJSON), 'sampling_rate': sampling_rate})'''
 
-def collect_adc_data(duration, radius, lat, lon, location):
-    global ADC
-    channelList = [0, 1, 2]
-    start_time = time.perf_counter()
-    ADC_Value_List = []
-
-    interval = 1 / sampling_rate
-    next_sample_time = start_time + interval
-    no_sample = duration * sampling_rate
-    while len(ADC_Value_List) < no_sample:
-        current_time = time.perf_counter()
-        if current_time >= next_sample_time:
-            ADC_Value = ADC.ADS1263_GetAll(channelList)
-            ADC_Value_List.append(ADC_Value)
-            next_sample_time += interval
-
-    actual_sampling_rate = len(ADC_Value_List) / (current_time - start_time)
-    
-    converted_data = {channel: [] for channel in channelList}
-    for data in ADC_Value_List:
-        for channel, value in enumerate(data):
-            if value >> 31 == 1:
-                converted_data[channel].append(-(REF * 2 - value * REF / 0x80000000))
-            else:
-                converted_data[channel].append(value * REF / 0x7fffffff)
-
-    # Store the event information in the database
-    timestamp = int(time.time())
-    num_channels = len(channelList)
-
-def store_event_in_database(timestamp, num_channels, duration, radius, lat, lon, converted_data, location, components=None):
+def store_event_in_database(timestamp, num_channels, duration, radius, lat, lon, filepath, location, components=None):
     datetime_string = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
 
-    new_adc_data = AdcData(timestamp=datetime_string, num_channels=num_channels, duration=duration, radius=radius, latitude=lat, longitude=lon, location=location)
+    new_adc_data = AdcData(timestamp=datetime_string, num_channels=num_channels, duration=duration, radius=radius, latitude=lat, longitude=lon, location=location, waveform_file=filepath)
     db.session.add(new_adc_data)
     db.session.commit()
-    event_id = new_adc_data.id
 
-    total_values = sum(len(channel_data) for channel_data in converted_data.values())
-    stored_values = 0
-
-    if components is None:
-        # Default components for vertical only
-        components = ['z']
-
-    print("Storing data into database")
-    for channel, values in converted_data.items():
-        component = components[int(channel) % len(components)]
-        for value in values:
-            new_adc_value = AdcValues(event_id=event_id, channel=channel, component=component, value=value)
-            db.session.add(new_adc_value)
-
-    db.session.commit()
     print("Finish")
 
 def create_plot(converted_data):
@@ -188,13 +133,13 @@ def get_waveform_data():
     if not event_id:
         return jsonify({'error': 'Event ID is required'}), 400
 
-    rows = AdcValues.query.filter_by(event_id=event_id).order_by(AdcValues.channel, AdcValues.component, AdcValues.id).all()
+    # Fetch the waveform file path from the database
+    adc_data = db.session.get(AdcData, event_id)
+    if adc_data is None:
+        return jsonify({'error': 'Event not found'}), 404
 
-    waveform_data = defaultdict(lambda: defaultdict(list))
-    for row in rows:
-        channel, component, value = row.channel, row.component, row.value
-        waveform_data[channel][component].append(value)
-    
+    waveform_data = fetch_waveform_data_from_file(adc_data.waveform_file)
+    print(waveform_data)
 
     return jsonify(waveform_data)
 
@@ -203,12 +148,9 @@ def delete_event():
     event_id = request.form['id']
     
     try:
-        adc_values = AdcValues.query.filter_by(event_id=event_id).all()
-        for value in adc_values:
-            db.session.delete(value)
-
-        adc_data = adc_data = db.session.get(AdcData, event_id)
+        adc_data = db.session.get(AdcData, event_id)
         if adc_data:
+            os.remove(adc_data.waveform_file)  # Delete the waveform file
             db.session.delete(adc_data)
 
         db.session.commit()
@@ -231,7 +173,7 @@ def update_event():
 
     try:
         # Update the data in the SQLite database
-        event = AdcData.query.get(event_id)
+        event = db.session.get(AdcData, event_id)
         if event is None:
             return jsonify(status="error", message="No such event")
 
@@ -251,33 +193,9 @@ def update_event():
         return jsonify(status="error")
 
     
-def fetch_waveform_data_by_id(event_id):
-    # Fetch waveform data
-    rows = AdcValues.query.filter_by(event_id=event_id).order_by(AdcValues.channel, AdcValues.id).all()
-
-    waveform_data = defaultdict(list)
-    for row in rows:
-        channel, value = row.channel, row.value
-        waveform_data[str(channel)].append(value)  # Convert channel to string to avoid key duplication
-
-    # Fetch metadata
-    metadata_row = AdcData.query.get(event_id)
-
-    if metadata_row:
-        metadata = {
-            'id': metadata_row.id,
-            'timestamp': metadata_row.timestamp,
-            'num_channels': metadata_row.num_channels,
-            'duration': metadata_row.duration,
-            'radius': metadata_row.radius,
-            'latitude': metadata_row.latitude,
-            'longitude': metadata_row.longitude,
-            'location': metadata_row.location
-        }
-    else:
-        metadata = None
-
-    return waveform_data, metadata
+def fetch_waveform_data_from_file(filepath):
+    with open(filepath, 'r') as f:
+        return json.load(f)
 
 @app.route('/download_waveform_data', methods=['GET'])
 def download_waveform_data():
@@ -286,27 +204,34 @@ def download_waveform_data():
     if not event_id:
         return jsonify({'error': 'Event ID is required'}), 400
 
-    waveform_data = fetch_waveform_data_by_id(event_id)  # Use the new function to get the waveform data
+    adc_data = db.session.get(AdcData, event_id)
+    if adc_data is None:
+        return jsonify({'error': 'Event not found'}), 404
+
+    full_data = fetch_waveform_data_from_file(adc_data.waveform_file)
     
-    if not waveform_data:
+    if not full_data:
         return jsonify({'error': 'No data found'}), 404
 
+    waveform_data = full_data['waveform_data']
+    metadata = full_data['metadata']
+
     # Calculate the sampling rate
-    duration = waveform_data[1]['duration']
-    num_samples = len(waveform_data[0]['0'])
+    duration = metadata['duration']
+    num_samples = len(waveform_data['0'])
     sampling_rate = num_samples/duration
 
     # Build the response dictionary with the desired structure
     response_data = {
         "metadata": {
             "duration": duration,
-            "radius": waveform_data[1]['radius'],
-            "latitude": waveform_data[1]['latitude'],
-            "longitude": waveform_data[1]['longitude'],
-            "location": waveform_data[1]['location'],
+            "radius": metadata['radius'],
+            "latitude": metadata['latitude'],
+            "longitude": metadata['longitude'],
+            "location": metadata['location'],
             "sampling_rate": sampling_rate
         },
-        "waveform_data": waveform_data[0]
+        "waveform_data": waveform_data
     }
 
     response = jsonify(response_data)
@@ -314,11 +239,17 @@ def download_waveform_data():
     response.headers.set('Content-Type', 'application/json')
     return response
 
+
 @app.route('/store_uploaded_data', methods=['POST'])
 def store_uploaded_data():
     data = request.json
     metadata = data['metadata']
     waveform_data = data['waveform_data']
+
+    filename = f"{int(time.time())}_{metadata['location']}.json"
+    filepath = os.path.join('path_to_your_storage_directory', filename)
+    with open(filepath, 'w') as jsonfile:
+        json.dump(waveform_data, jsonfile)
 
     adc_data = AdcData(
         timestamp=datetime.now(),
@@ -327,20 +258,10 @@ def store_uploaded_data():
         radius=metadata['radius'],
         latitude=metadata['latitude'],
         longitude=metadata['longitude'],
-        location=metadata['location']
+        location=metadata['location'],
+        waveform_file=filepath
     )
     db.session.add(adc_data)
-    db.session.commit()
-
-    for channel, values in waveform_data.items():
-        for value in values:
-            adc_value = AdcValues(
-                event_id=adc_data.id,
-                channel=channel,
-                value=value
-            )
-            db.session.add(adc_value)
-
     db.session.commit()
 
     return jsonify({'success': True, 'message': 'Data stored successfully'})
@@ -351,7 +272,6 @@ current_command = 0
 command_processed = True
 
 @app.route('/dashboard3D.html', methods=['GET', 'POST'])
-@login_required
 def dashboard3D():
     global current_command, command_processed_dict
     if request.method == 'POST':
@@ -405,7 +325,25 @@ def get_data():
         timestamp = int(time.time())
         num_channels = len(merged_data)
         
-        store_event_in_database(timestamp, num_channels, duration, radius, latitude, longitude, merged_data, location, components=['z', 'x', 'y'])
+        # Store converted_data and metadata in local JSON file
+        filename = f"{timestamp}_{location}.json"
+        filepath = os.path.join(Storage_path, filename)
+        full_data = {
+            'metadata': {
+                'timestamp': timestamp,
+                'num_channels': num_channels,
+                'duration': duration,
+                'radius': radius,
+                'latitude': latitude,
+                'longitude': longitude,
+                'location': location
+            },
+            'waveform_data': merged_data
+        }
+        with open(filepath, 'w') as jsonfile:
+            json.dump(full_data, jsonfile)
+        
+        store_event_in_database(timestamp, num_channels, duration, radius, latitude, longitude, filepath, location, components=['z', 'x', 'y'])
         
         # Convert the merged data to a format suitable for plotting
         plot_data = []
@@ -414,6 +352,7 @@ def get_data():
                 plot_data.append({'channel': int(channel), 'sample': i, 'value': value})
 
         return jsonify(plot_data)
+
 
 def handle_client_connection(conn, addr):
     global command_processed_dict, received_data_dict, connected_devices
@@ -442,7 +381,7 @@ def handle_client_connection(conn, addr):
                 data = b""
                 remaining_data = data_length
                 while remaining_data > 0:
-                    chunk = conn.recv(min(remaining_data, 4096))
+                    chunk = conn.recv(min(remaining_data, 40960))
                     if not chunk:
                         break
                     data += chunk
