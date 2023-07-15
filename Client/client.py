@@ -13,7 +13,7 @@ import uuid
 ads1263_available = False
 
 
-import ADS1263
+import Client.ADS1263 as ADS1263
 import RPi.GPIO as GPIO
 
 REF = 5.08
