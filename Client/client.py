@@ -12,19 +12,21 @@ import uuid
 
 ads1263_available = False
 
+try:
+    if platform.system() == "Linux":
+        import ADS1263
+        import RPi.GPIO as GPIO
 
-import Client.ADS1263 as ADS1263
-import RPi.GPIO as GPIO
-
-REF = 5.08
-ADC = ADS1263.ADS1263()
-if (ADC.ADS1263_init_ADC1('ADS1263_7200SPS') == -1):
-    ADC.ADS1263_Exit()
-    print("Failed to initialize ADC1")
-    exit()
-ADC.ADS1263_SetMode(1)
-ads1263_available = True
-
+        REF = 5.08
+        ADC = ADS1263.ADS1263()
+        if (ADC.ADS1263_init_ADC1('ADS1263_7200SPS') == -1):
+            ADC.ADS1263_Exit()
+            print("Failed to initialize ADC1")
+            exit()
+        ADC.ADS1263_SetMode(1)
+        ads1263_available = True
+except ImportError:
+    print("ADS1263 library not available, using simulated data")
 
 sampling_rate = 128  # Hz
 interval = 1 / sampling_rate
