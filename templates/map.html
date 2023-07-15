@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="sidebar">
+    <!--
+      Tip 1: You can change the color of the sidebar using: data-color="blue | green | orange | red"
+  -->
+    <div class="sidebar-wrapper"  data-color="blue | green | orange | red">
+      <div class="logo">
+        <a href="javascript:void(0)" class="simple-text logo-mini">
+          CT
+        </a>
+        <a href="javascript:void(0)" class="simple-text logo-normal">
+          Geoverse
+        </a>
+      </div>
+      <ul class="nav">
+        <li>
+          <a href="./dashboard.html">
+            <i class="tim-icons icon-chart-pie-36"></i>
+            <p>gVwave1D</p>
+          </a>
+        </li>
+        <li>
+          <a href="./dashboard3D.html">
+            <i class="tim-icons icon-sound-wave"></i>
+            <p>gVwave3D</p>
+          </a>
+        </li>
+        <li class="active ">
+          <a href="./map.html">
+            <i class="tim-icons icon-pin"></i>
+            <p>Maps</p>
+          </a>
+          <li>
+            <a href="./tables.html">
+              <i class="tim-icons icon-puzzle-10"></i>
+              <p>Table List</p>
+            </a>
+          </li>
+        </li>
+        <li>
+          <a href="./icons.html">
+            <i class="tim-icons icon-atom"></i>
+            <p>Icons</p>
+          </a>
+        </li>
+        <li>
+          <a href="./iot.html">
+            <i class="tim-icons icon-bell-55"></i>
+            <p>gV IoT</p>
+          </a>
+        </li>
+        <li>
+          <a href="./user.html">
+            <i class="tim-icons icon-single-02"></i>
+            <p>User Profile</p>
+          </a>
+        </li>
+        <li>
+          <a href="./typography.html">
+            <i class="tim-icons icon-align-center"></i>
+            <p>Typography</p>
+          </a>
+        </li>
+        <li>
+          <a href="./rtl.html">
+            <i class="tim-icons icon-world"></i>
+            <p>RTL Support</p>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+    <div class="content">
+        <div class="row">
+            <div class="col-md-12">
+                <h1>GIS Map</h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div id="mapid" style="height: 80vh;"></div>
+            </div>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha384-KyZXEAg3QhqLMpG8r+Knujsl5/X+Hq5vk9g4e9S7fwiJtLd4ycL4h5NE4w4bR/MA" crossorigin="anonymous"></script>
+
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var data = {{ data|tojson }};
+        var lastDataPoint = data[data.length - 1];
+        var lastLatitude = lastDataPoint['latitude'];
+        var lastLongitude = lastDataPoint['longitude'];
+    
+        // Create the map and set its initial view to the last data point
+        var mymap = L.map('mapid').setView([lastLatitude, lastLongitude], 13);
+        var markerClusterGroup = L.markerClusterGroup();
+        // Add a base map layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(mymap);
+    
+        // Add markers for each event
+        data.forEach(row => {
+            var marker = L.marker([row['latitude'], row['longitude']]).addTo(mymap);
+    
+            var metadataHTML = `<b>ID:</b> ${row['id']}<br><b>Date:</b> ${row['timestamp']}<br><b>Number of Channels:</b> ${row['num_channels']}<br><b>Duration:</b> ${row['duration']} seconds<br><b>Radius:</b> ${row['radius']} m`;
+    
+            var graphContainer = document.createElement('div');
+            graphContainer.id = 'popup-' + row[0];
+            graphContainer.style.width = '600px';
+            graphContainer.style.height = '300px';
+    
+            var popupContent = document.createElement('div');
+            popupContent.innerHTML = metadataHTML;
+            popupContent.appendChild(graphContainer);
+
+            markerClusterGroup.addLayer(marker);
+    
+            marker.bindPopup(popupContent);
+    
+            marker.on('click', function() {
+              if (this._popup._isOpen) {
+                  this.closePopup();
+              } else {
+                  this.openPopup();
+              }
+          });
+    
+            marker.on('popupopen', () => {
+              $.get('/get_waveform_data', {id: row['id']}, function(data) {
+                plotWaveform(data, row['id'], graphContainer.id);
+            });
+            });
+        });
+        mymap.addLayer(markerClusterGroup);
+    });
+    
+    function plotWaveform(graphData, id, popupId) {
+        let traces = [];
+        for (const channel in graphData) {
+            if (graphData.hasOwnProperty(channel)) {
+                for (const component in graphData[channel]) {
+                    if (graphData[channel].hasOwnProperty(component)) {
+                        let channelData = graphData[channel][component];
+                        traces.push({
+                            x: Array.from({length: channelData.length}, (_, i) => i),
+                            y: channelData,
+                            mode: 'lines',
+                            name: `Channel ${channel} (${component})`
+                        });
+                    }
+                }
+            }
+        }
+        let layout = {
+            title: 'Waveform of All Channels of ID:' + id,
+            xaxis: {title: 'Sample Index'},
+            yaxis: {title: 'Values', range: [0, 1]}
+        };
+        Plotly.newPlot(popupId, traces, layout);
+    }
+      
+    </script>
+{% endblock %}
