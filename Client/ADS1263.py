@@ -27,7 +27,7 @@
 # THE SOFTWARE.
 #
 
-import Client.config as config
+import config as config
 import RPi.GPIO as GPIO
 
 # gain
