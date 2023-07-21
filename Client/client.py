@@ -34,7 +34,7 @@ interval = 1 / sampling_rate
 
 def collect_adc_data(duration):
     global ADC
-    channelList = [0, 1, 2]
+    channelList = 0
     start_time = time.perf_counter()
     ADC_Value_List = []
 
@@ -46,7 +46,8 @@ def collect_adc_data(duration):
     while len(ADC_Value_List) < no_sample:
         current_time = time.perf_counter()
         if current_time >= next_sample_time:
-            ADC_Value = ADC.ADS1263_GetAll(channelList)
+            #ADC_Value = ADC.ADS1263_GetAll(channelList)
+            ADC_Value = ADC. ADS1263_GetChannalValue(channelList)
             ADC_Value_List.append(ADC_Value)
             next_sample_time += interval
 
