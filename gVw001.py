@@ -20,13 +20,25 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 import os
 
-Storage_path = 'Storages'
+# Directory where this script is located
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Full path to the 'Storages' directory
+Storage_path = os.path.join(base_dir, 'Storages')
+
+# Create 'Storages' directory if it doesn't exist
+if not os.path.exists(Storage_path):
+    os.makedirs(Storage_path)
 
 
 def create_app():
     app = Flask(__name__, static_folder="static", template_folder="templates")
     app.config['SECRET_KEY'] = 'gvWave01'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gVdb2023.db'
+    
+    db_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(db_dir, 'gVdb2023.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    
     #app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://admin:Geoverse5@161.200.87.11:80/gvdb'
     db.init_app(app)
     '''from models import User
@@ -34,6 +46,7 @@ def create_app():
     def load_user(user_id):
         return db.session.get(User, int(user_id))'''
     return app
+
 
 app = create_app()
 
