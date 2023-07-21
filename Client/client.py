@@ -37,7 +37,6 @@ def collect_adc_data(duration):
     channelList = [0]
     start_time = time.perf_counter()
     ADC_Value_List = []
-    ADC_Value = []
 
     next_sample_time = start_time + interval
     no_sample = duration * sampling_rate
@@ -47,19 +46,19 @@ def collect_adc_data(duration):
     while len(ADC_Value_List) < no_sample:
         current_time = time.perf_counter()
         if current_time >= next_sample_time:
-            #ADC_Value = ADC.ADS1263_GetAll(channelList)
-            ADC_Value = ADC.ADS1263_GetChannalValue(channelList[0])
+            ADC_Value = ADC.ADS1263_GetAll(channelList)
             ADC_Value_List.append(ADC_Value)
             next_sample_time += interval
 
     actual_sampling_rate = len(ADC_Value_List) / (current_time - start_time)
 
-    converted_data = []
-    for value in ADC_Value_List:
-        if value >> 31 == 1:
-            converted_data.append(-(REF * 2 - value * REF / 0x80000000))
-        else:
-            converted_data.append(value * REF / 0x7fffffff)
+    converted_data = {channel: [] for channel in channelList}
+    for data in ADC_Value_List:
+        for channel, value in enumerate(data):
+            if value >> 31 == 1:
+                converted_data[channel].append(-(REF * 2 - value * REF / 0x80000000))
+            else:
+                converted_data[channel].append(value * REF / 0x7fffffff)
     print(f"actual_sampling_rate = {actual_sampling_rate}")
     return converted_data, actual_sampling_rate
 
