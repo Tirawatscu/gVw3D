@@ -52,7 +52,7 @@ def collect_adc_data(duration):
             ADC_Value_List.append(ADC_Value)
             next_sample_time += interval
 
-    actual_sampling_rate = len(ADC_Value) / (current_time - start_time)
+    actual_sampling_rate = len(ADC_Value_List) / (current_time - start_time)
 
     converted_data = []
     for data in ADC_Value_List:
