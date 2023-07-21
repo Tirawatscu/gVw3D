@@ -313,7 +313,7 @@ def get_data():
         latitude = float(request.form['latitude'])
         longitude = float(request.form['longitude'])
         location = request.form['location']
-        current_command = int(duration * 128)
+        current_command = (int(time.time()) + 3, int(duration * 128))  # Start time, duration
 
         # Set all command_processed flags to False
         with connections_lock:

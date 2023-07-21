@@ -98,10 +98,16 @@ def main(ipaddr, port, use_simulated_data=False):
                 if ready_to_read:
                     data = s.recv(1024)
                     if data:
-                        sample_count = float(data.decode())
-                        print(f"Received sample_count: {sample_count}")
+                        data_string = data.decode().strip('()')  # Remove parentheses
+                        start_time, sample_count = map(float, data_string.split(","))
+                        print(f"Recent timte: {int(time.time())}, Received start_time: {start_time}, sample_count: {sample_count}")
                         duration = sample_count / sampling_rate
 
+                        # Wait until the start time
+                        while time.time() < start_time:
+                            pass
+
+                        # Then, start data collection
                         if use_simulated_data or not ads1263_available:
                             random_data, actual_sampling_rate = simulate_adc_data(duration)
                         else:
@@ -115,7 +121,7 @@ def main(ipaddr, port, use_simulated_data=False):
                     else:
                         break
 
-                time.sleep(1)
+                time.sleep(0.5)
 
         except socket.error as e:
             print(f"Connection failed. Retrying... Error: {e}")

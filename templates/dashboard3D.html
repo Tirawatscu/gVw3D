@@ -143,7 +143,7 @@
                 let progressBarCollection = $("#progress-bar-collection");
                 let progressTextCollection = $("#progress-text-collection");
                 let progressIntervalCollection = setInterval(function () {
-                    progressCollection += 100 * 0.1 / duration;
+                    progressCollection += 100 * 0.1 / (duration + 3);
                     if (progressCollection >= 100) {
                         clearInterval(progressIntervalCollection);
                         progressCollection = 100;
