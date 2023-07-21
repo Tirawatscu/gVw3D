@@ -55,12 +55,11 @@ def collect_adc_data(duration):
     actual_sampling_rate = len(ADC_Value_List) / (current_time - start_time)
 
     converted_data = []
-    for data in ADC_Value_List:
-        for value in data:
-            if value >> 31 == 1:
-                converted_data.append(-(REF * 2 - value * REF / 0x80000000))
-            else:
-                converted_data.append(value * REF / 0x7fffffff)
+    for value in ADC_Value_List:
+        if value >> 31 == 1:
+            converted_data.append(-(REF * 2 - value * REF / 0x80000000))
+        else:
+            converted_data.append(value * REF / 0x7fffffff)
     print(f"actual_sampling_rate = {actual_sampling_rate}")
     return converted_data, actual_sampling_rate
 
