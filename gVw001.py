@@ -152,7 +152,7 @@ def get_waveform_data():
         return jsonify({'error': 'Event not found'}), 404
 
     waveform_data = fetch_waveform_data_from_file(adc_data.waveform_file)
-    print(waveform_data)
+    #print(waveform_data)
 
     return jsonify(waveform_data)
 
