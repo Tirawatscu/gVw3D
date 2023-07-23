@@ -78,6 +78,12 @@
                 });
             });
         });
+        $(window).resize(function() {
+            var update = {
+                width: window.innerWidth,  // or any new width
+            };
+            Plotly.relayout('waveform-plot', update);
+        });
         function plotWaveform(data, id) {
             let traces = [];
             let waveform_data = data['waveform_data'];
