@@ -437,7 +437,10 @@ def start_server(port):
 def connected_devices_count():
     with connections_lock:
         count = len(connected_devices)
-    return jsonify({"count": count})
+        print(connected_devices.keys())
+        device_names = list(connected_devices.keys())  # Convert keys (device names) to list
+    return jsonify({"devices": device_names})
+
 
 if __name__ == '__main__':
     try:

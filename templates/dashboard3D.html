@@ -282,11 +282,12 @@
         });
         function updateConnectedDevices() {
           fetch('/connected_devices')
-            .then(response => response.json())
-            .then(data => {
-              document.getElementById('connected-devices').textContent = `Connected Devices: ${data.count}`;
-            });
-        }
+              .then(response => response.json())
+              .then(data => {
+                  let deviceList = data.devices.join(", ");  // Convert the array of devices to a string
+                  document.getElementById('connected-devices').textContent = `Connected Devices: ${deviceList}`;
+              });
+      }      
         // Update the connected devices count every 5 seconds
         setInterval(updateConnectedDevices, 5000);
     </script>
