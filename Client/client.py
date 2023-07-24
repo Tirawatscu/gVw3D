@@ -1,5 +1,5 @@
 #Client
-# This client python can geneate the simulated signal
+# This client python can geneate the simulated signal updated now
 
 import socket
 import random
