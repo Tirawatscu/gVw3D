@@ -34,7 +34,7 @@ interval = 1 / sampling_rate
 
 def collect_adc_data(duration):
     global ADC
-    channelList = [0]
+    channelList = [0,1,2]
     start_time = time.perf_counter()
     ADC_Value_List = []
 
