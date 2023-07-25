@@ -260,7 +260,7 @@ def store_uploaded_data():
     waveform_data = data['waveform_data']
 
     filename = f"{int(time.time())}_{metadata['location']}.json"
-    filepath = os.path.join('path_to_your_storage_directory', filename)
+    filepath = os.path.join('Storages', filename)
     with open(filepath, 'w') as jsonfile:
         json.dump(waveform_data, jsonfile)
 
