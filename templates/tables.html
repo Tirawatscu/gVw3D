@@ -7,11 +7,6 @@
       <div class="content">
         <div class="row">
             <div class="col-md-12">
-                <div id="waveform-plot"></div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-12">
                 <div class="card ">
                     <div class="card-header">
                         <h2>Events Table</h2>
@@ -56,8 +51,13 @@
                                         </button>
                                         <button type="button" rel="tooltip" title="" class="btn btn-link download-event" data-original-title="Download" data-id="{{ row.id }}" onclick="downloadWaveformData({{ row.id }});">
                                             <i class="tim-icons icon-cloud-download-93"></i>
-                                        </button>                                                                      
+                                        </button>                                                               
                                       </td>
+                                    </tr>
+                                    <tr id="waveform-row-{{ row.id }}" style="display: none;">
+                                        <td colspan="5">
+                                            <div id="waveform-plot-{{ row.id }}" class="waveform-plot"></div>
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -72,17 +72,29 @@
         $(document).ready(function() {
             $('.zoom-split').click(function() {
                 let id = $(this).data('id');
-                // Fetch data for the given ID and call the plotWaveform function
-                $.get('/get_waveform_data', {id: id}, function(data) {
-                    plotWaveform(data, id);
-                });
+                let rowId = '#waveform-row-' + id;
+        
+                if ($(rowId).is(':visible')) {
+                    $(rowId).hide();
+                } else {
+                    $(rowId).show();
+                    // Fetch data for the given ID and call the plotWaveform function
+                    $.get('/get_waveform_data', {id: id}, function(data) {
+                        plotWaveform(data, id);
+                    });
+                }
             });
         });
+        
+        
         $(window).resize(function() {
             var update = {
-                width: window.innerWidth,  // or any new width
+                width: window.innerWidth  // or any new width
             };
-            Plotly.relayout('waveform-plot', update);
+            $('.waveform-plot').each(function() {
+                var id = $(this).attr('id');
+                Plotly.relayout(id, update);
+            });
         });
         function plotWaveform(data, id) {
             let traces = [];
@@ -102,8 +114,18 @@
                 xaxis: {title: 'Sample Index'},
                 yaxis: {title: 'Values', range: [-1, 1]}
             };
-            Plotly.newPlot('waveform-plot', traces, layout);
+            Plotly.newPlot('waveform-plot-' + id, traces, layout);
         }
+        $(window).resize(function() {
+            var update = {
+                width: window.innerWidth  // or any new width
+            };
+            $('.waveform-plot').each(function() {
+                var id = $(this).attr('id');
+                Plotly.relayout(id, update);
+            });
+        });
+        
         
               
 
