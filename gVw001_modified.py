@@ -400,7 +400,6 @@ def handle_client_connection(conn, addr):
                         break
                     data += chunk
                     remaining_data -= len(chunk)
-                print(data)
                 
                 received_json = json.loads(data.decode())  # Deserialize JSON data
                 data_id = received_json['id']

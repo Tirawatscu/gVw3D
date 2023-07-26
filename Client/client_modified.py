@@ -143,7 +143,7 @@ def main(ipaddr, port, use_simulated_data=False):
                                         s.connect((ipaddr, port))  # Reconnect
                             except socket.error as e:
                                 print(f"Connection failed. Retrying... Error: {e}")
-                                time.sleep(5)
+                                time.sleep(2)
 
 
                             # print(f"Sent random data: {random_data}")

@@ -1,4 +1,3 @@
-processed_data_ids = set()
 # This python file is for running on the server
 # This code excluded adc so it can't use the wire function
 # I try to change the database in this version by using saving csv instead of DATABASE
@@ -400,26 +399,8 @@ def handle_client_connection(conn, addr):
                         break
                     data += chunk
                     remaining_data -= len(chunk)
-                
-                received_json = json.loads(data.decode())  # Deserialize JSON data
-                data_id = received_json['id']
-                received_data = received_json['data']
-                received_checksum = received_json['checksum']
 
-                print(received_data)
-                # Verify the checksum
-                if sum([sum(value) for value in received_data.values()]) != received_checksum:
-                    print(f"Checksum error for data ID {data_id}")
-                    continue  # Skip this data
-
-
-                # Skip if this data ID has already been processed
-                if data_id in processed_data_ids:
-                    print(f"Data ID {data_id} has already been processed")
-                    continue  # Skip this data
-
-                processed_data_ids.add(data_id)
-    
+                received_data = json.loads(data.decode())  # Deserialize JSON data
 
                 with connections_lock:
                     received_data_dict[device_id] = received_data

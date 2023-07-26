@@ -114,43 +114,14 @@ def main(ipaddr, port, use_simulated_data=False):
                             random_data, actual_sampling_rate = collect_adc_data(duration)
 
                         if ready_to_write:
-                            # Compute a simple checksum by summing all the data values
-                            checksum = sum([sum(channel_data) for channel_data in random_data.values()])
+                            data_to_send = json.dumps(random_data).encode()  # Serialize data to JSON
+                            s.sendall(str(len(data_to_send)).encode().zfill(8))  # Send data length
+                            s.sendall(data_to_send)  # Send the actual data
 
-                            # Construct a unique ID for the data
-                            data_id = f"{mac_address}_{start_time}"
+                    else:
+                        break
 
-                            # Construct the data to send as a JSON object
-                            data_to_send = {
-                                "id": data_id,
-                                "data": random_data,
-                                "checksum": checksum
-                            }
-
-                            data_to_send = json.dumps(data_to_send).encode()  # Serialize data to JSON
-                            
-                            time.sleep(0.5)
-                            try:
-                                # Now calculate the data length after all modifications to the data have been made
-                                data_length = str(len(data_to_send)).encode().zfill(8)
-                                while True:  # Loop until sending is successful
-                                    try:
-                                        s.sendall(data_length)  # Send data length
-                                        s.sendall(data_to_send)  # Send the actual data
-                                        break  # If sending was successful, break the loop
-                                    except socket.error:
-                                        print("Error sending data. Retrying...")
-                                        s.connect((ipaddr, port))  # Reconnect
-                            except socket.error as e:
-                                print(f"Connection failed. Retrying... Error: {e}")
-                                time.sleep(2)
-
-
-                            # print(f"Sent random data: {random_data}")
-                        else:
-                            break
-
-                        time.sleep(0.5)
+                time.sleep(0.5)
 
         except socket.error as e:
             print(f"Connection failed. Retrying... Error: {e}")
