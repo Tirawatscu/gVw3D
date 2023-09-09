@@ -109,13 +109,13 @@ def main(ipaddr, port, use_simulated_data=False):
 
                         # Then, start data collection
                         if use_simulated_data or not ads1263_available:
-                            random_data, actual_sampling_rate = simulate_adc_data(duration)
+                            adc_data, actual_sampling_rate = simulate_adc_data(duration)
                         else:
-                            random_data, actual_sampling_rate = collect_adc_data(duration)
+                            adc_data, actual_sampling_rate = collect_adc_data(duration)
 
                         if ready_to_write:
                             # Compute a simple checksum by summing all the data values
-                            checksum = sum([sum(channel_data) for channel_data in random_data.values()])
+                            checksum = sum([sum(channel_data) for channel_data in adc_data.values()])
 
                             # Construct a unique ID for the data
                             data_id = f"{mac_address}_{start_time}"
@@ -123,7 +123,7 @@ def main(ipaddr, port, use_simulated_data=False):
                             # Construct the data to send as a JSON object
                             data_to_send = {
                                 "id": data_id,
-                                "data": random_data,
+                                "data": adc_data,
                                 "checksum": checksum
                             }
 
@@ -174,3 +174,5 @@ if __name__ == '__main__':
         main(ipaddr, port, use_simulated_data)
 
 
+# Noted, I want the another thread keep talking to the server, and the main thread keep collecting the data
+# By sending the wifi signal strength to the server, I can know the device is still alive

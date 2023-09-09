@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import struct
 import smbus
-import sys
 import time
 import RPi.GPIO as GPIO
 
@@ -70,9 +69,6 @@ while True:
         print ("Power Adapter Plug In ") 
  if (GPIO.input(4) == GPIO.LOW):      
         print ("Power Adapter Unplug")
-
-
-
 
 
  print ("++++++++++++++++++++")

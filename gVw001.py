@@ -406,7 +406,7 @@ def handle_client_connection(conn, addr):
                 received_data = received_json['data']
                 received_checksum = received_json['checksum']
 
-                print(received_data)
+                #print(received_data)
                 # Verify the checksum
                 if sum([sum(value) for value in received_data.values()]) != received_checksum:
                     print(f"Checksum error for data ID {data_id}")
@@ -471,4 +471,3 @@ if __name__ == '__main__':
             ADC.ADS1263_Exit()
         except:
             pass
-
